@@ -836,12 +836,21 @@ async function serializeNetworkResponse(response: Response): Promise<Record<stri
   } catch {
     json = undefined;
   }
+  // 透传服务端回传的 set-cookie（当客户端在请求头里声明 x-allow-set-cookie: 1 时），
+  // 供自定义 APP 的扫码登录等流程取 cookie 用。
+  let setCookie = "";
+  try {
+    const sc = response.headers.get("set-cookie");
+    if (sc) setCookie = sc;
+  } catch { /* ignore */ }
+  const headersOut: Record<string, string> = { ...responseHeaders };
+  if (setCookie) headersOut["set-cookie"] = setCookie;
   if (json && typeof json === "object" && (json as Record<string, unknown>)._binary === true) {
     return {
       ok: response.ok,
       status: response.status,
       statusText: response.statusText,
-      headers: responseHeaders,
+      headers: headersOut,
       binary: true,
       contentType: cleanText((json as Record<string, unknown>).contentType, 120),
       data: cleanText((json as Record<string, unknown>).data, 2_000_000),
@@ -851,9 +860,10 @@ async function serializeNetworkResponse(response: Response): Promise<Record<stri
     ok: response.ok,
     status: response.status,
     statusText: response.statusText,
-    headers: responseHeaders,
+    headers: headersOut,
     text,
     json,
+    setCookie,
   };
 }
 

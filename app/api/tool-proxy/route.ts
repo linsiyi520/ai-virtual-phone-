@@ -136,6 +136,14 @@ export async function POST(req: NextRequest) {
         if (sessionId) responseHeaders["mcp-session-id"] = sessionId;
         const wwwAuth = res.headers.get("www-authenticate");
         if (wwwAuth) responseHeaders["www-authenticate"] = wwwAuth;
+        // 仅当调用方显式要求时才回传 Set-Cookie（供自定义 APP 的登录流程取 cookie）。
+        // 由客户端请求头 x-allow-set-cookie: 1 开启，避免无差别回传造成安全问题。
+        if (headers && (headers as Record<string, string>)["x-allow-set-cookie"] === "1") {
+            const setCookies = typeof res.headers.getSetCookie === "function"
+                ? res.headers.getSetCookie()
+                : (res.headers.get("set-cookie") ? [res.headers.get("set-cookie") as string] : []);
+            if (setCookies.length) responseHeaders["set-cookie"] = setCookies.join("; ");
+        }
 
         // SSE_DISCOVER: just get the endpoint path
         if (method === "SSE_DISCOVER") {
