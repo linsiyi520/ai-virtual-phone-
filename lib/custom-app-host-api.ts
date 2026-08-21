@@ -689,7 +689,8 @@ const NETWORK_FETCH_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", 
 const CUSTOM_APP_OPTIONAL_TIMEOUT_MAX_MS = 30 * 60_000;
 const CUSTOM_APP_PROXY_TIMEOUT_MAX_MS = 120_000;
 const FORBIDDEN_NETWORK_HEADERS = new Set([
-  "cookie",
+  // 注：允许自定义 APP 发送 Cookie 请求头（网易云音乐类 APP 登录态需要）。
+  // 仅对 manifest.network.allowedDomains 里声明的域名生效，且由 APP 自己保管 cookie。
   "set-cookie",
   "host",
   "origin",
