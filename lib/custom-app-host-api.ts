@@ -843,6 +843,11 @@ async function serializeNetworkResponse(response: Response): Promise<Record<stri
     const sc = response.headers.get("set-cookie");
     if (sc) setCookie = sc;
   } catch { /* ignore */ }
+  // 浏览器读不到 set-cookie 响应头，代理会把它嵌进 JSON body 的 _setCookie 字段。
+  if (!setCookie && json && typeof json === "object" && !Array.isArray(json)) {
+    const sc2 = (json as Record<string, unknown>)._setCookie;
+    if (typeof sc2 === "string" && sc2) setCookie = sc2;
+  }
   const headersOut: Record<string, string> = { ...responseHeaders };
   if (setCookie) headersOut["set-cookie"] = setCookie;
   if (json && typeof json === "object" && (json as Record<string, unknown>)._binary === true) {

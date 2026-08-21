@@ -243,6 +243,27 @@ export async function POST(req: NextRequest) {
 
         const responseText = await res.text();
 
+        // 浏览器端 JS 读不到 set-cookie 响应头（Fetch 规范禁止）。
+        // 当客户端显式声明 x-allow-set-cookie: 1 且响应是 JSON 时，
+        // 把 Set-Cookie 嵌进 JSON body 的 _setCookie 字段，客户端才能取到。
+        if ((headers as Record<string, string> | undefined)?.["x-allow-set-cookie"] === "1") {
+            const ct = (res.headers.get("Content-Type") || "").toLowerCase();
+            if (ct.includes("json") || responseText.trim().startsWith("{")) {
+                try {
+                    const obj = JSON.parse(responseText);
+                    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+                        const setCookies = typeof res.headers.getSetCookie === "function"
+                            ? res.headers.getSetCookie()
+                            : (res.headers.get("set-cookie") ? [res.headers.get("set-cookie") as string] : []);
+                        if (setCookies.length) {
+                            obj._setCookie = setCookies.join("; ");
+                            return NextResponse.json(obj, { status: res.status, headers: responseHeaders });
+                        }
+                    }
+                } catch { /* 非 JSON 不处理 */ }
+            }
+        }
+
         return new NextResponse(responseText, {
             status: res.status,
             headers: {
