@@ -91,6 +91,20 @@ export async function POST(req: NextRequest) {
             headers: fetchHeaders,
         };
 
+        // 网易云网页版 API 校验 Referer/UA，缺失会返回空壳(200 空数据)。
+        // 客户端(自定义 APP)在浏览器沙盒里无法设置 Referer(宿主禁止)，这里在服务端代补。
+        // 仅对网易云域名生效，不影响其他代理请求。
+        try {
+            const targetHost = new URL(fetchUrl).hostname.toLowerCase();
+            const isNetease = targetHost === "music.163.com" || targetHost.endsWith(".music.163.com");
+            if (isNetease) {
+                if (!fetchHeaders["Referer"]) fetchHeaders["Referer"] = "https://music.163.com/";
+                if (!fetchHeaders["User-Agent"]) fetchHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 NeteaseMusic/1.0.0";
+                if (!fetchHeaders["X-Real-IP"]) fetchHeaders["X-Real-IP"] = "116.25.146.177";
+                if (!fetchHeaders["X-Forwarded-For"]) fetchHeaders["X-Forwarded-For"] = "116.25.146.177";
+            }
+        } catch { /* ignore */ }
+
         if (body !== undefined && body !== null && method !== "GET" && method !== "SSE_DISCOVER" && method !== "SSE_REQUEST") {
             fetchOptions.body = typeof body === "string" ? body : JSON.stringify(body);
             if (!fetchHeaders["Content-Type"]) {
